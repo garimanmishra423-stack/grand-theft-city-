@@ -1,0 +1,1584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Grand Theft City</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@400;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;touch-action:none;}
+body{background:#000;overflow:hidden;font-family:'Rajdhani',sans-serif;}
+canvas{display:block;}
+
+/* ── HUD ── */
+#ui{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;}
+#hud{position:absolute;top:10px;left:10px;color:#fff;font-size:14px;text-shadow:2px 2px 4px #000;}
+#health-bar{width:150px;height:16px;background:#333;border:2px solid #fff;border-radius:8px;margin-top:4px;overflow:hidden;}
+#health-fill{height:100%;background:linear-gradient(90deg,#00ff44,#88ff00);transition:width 0.3s;border-radius:6px;}
+#wanted{position:absolute;top:10px;right:10px;display:flex;gap:4px;}
+.star{font-size:22px;color:#444;text-shadow:1px 1px 3px #000;transition:color 0.3s;}
+.star.active{color:#ffd700;}
+#weapon-hud{position:absolute;bottom:220px;right:10px;color:#fff;text-align:right;font-size:13px;text-shadow:2px 2px 4px #000;}
+#weapon-name{font-size:16px;font-weight:bold;color:#ffcc00;}
+#message{position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);color:#ff4444;font-size:20px;font-weight:bold;text-shadow:2px 2px 6px #000;opacity:0;transition:opacity 0.4s;pointer-events:none;text-align:center;white-space:nowrap;}
+#police-alert{position:absolute;top:60px;left:50%;transform:translateX(-50%);color:#ff0000;font-size:14px;font-weight:bold;text-shadow:0 0 10px #ff0000;opacity:0;transition:opacity 0.5s;white-space:nowrap;}
+#weather-indicator{position:absolute;bottom:220px;left:10px;color:#fff;font-size:13px;text-shadow:2px 2px 4px #000;}
+#shop-btn{position:absolute;bottom:220px;left:10px;color:#ffd700;font-size:12px;font-weight:bold;background:rgba(0,0,0,0.6);border:1px solid #ffd700;border-radius:6px;padding:4px 8px;pointer-events:all;cursor:pointer;margin-top:22px;}
+
+/* ── CONTROLS ── */
+#controls{position:fixed;bottom:0;left:0;width:100%;height:210px;pointer-events:none;z-index:20;}
+#joystick-area{position:absolute;bottom:20px;left:20px;pointer-events:all;}
+#joystick-base{width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.4);position:relative;}
+#joystick-knob{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.6);border:2px solid rgba(255,255,255,0.9);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);transition:none;}
+#action-buttons{position:absolute;bottom:20px;right:10px;display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:all;}
+.btn-row{display:flex;gap:8px;}
+.action-btn{width:52px;height:52px;border-radius:50%;border:2px solid rgba(255,255,255,0.5);font-size:11px;font-weight:bold;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;text-shadow:1px 1px 3px #000;user-select:none;-webkit-user-select:none;}
+#btn-shoot{background:rgba(220,50,50,0.8);width:64px;height:64px;font-size:13px;}
+#btn-enter{background:rgba(50,150,220,0.8);}
+#btn-rob{background:rgba(220,150,50,0.8);}
+#btn-weapon{background:rgba(100,50,220,0.8);font-size:9px;}
+#btn-grenade{background:rgba(50,180,50,0.8);font-size:10px;}
+
+/* ── INTRO ── */
+#intro{position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;}
+#intro-cityscape{position:absolute;bottom:0;left:0;width:100%;height:40%;pointer-events:none;}
+#intro-stars{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}
+#intro-logo{position:relative;z-index:2;text-align:center;margin-bottom:10px;}
+#intro-logo .gtc-title{font-family:'Bebas Neue',cursive;font-size:clamp(44px,10vw,86px);background:linear-gradient(180deg,#fff700 0%,#ff8800 40%,#ff3300 80%,#cc0000 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:6px;text-shadow:none;filter:drop-shadow(0 0 24px #ff6600) drop-shadow(0 0 48px #ff2200);line-height:1;}
+#intro-logo .gtc-sub{font-family:'Rajdhani',sans-serif;color:#aaa;font-size:12px;letter-spacing:10px;margin-top:-4px;}
+#intro-logo .gtc-tagline{color:#ff6600;font-size:13px;letter-spacing:3px;margin-top:6px;font-weight:600;}
+#intro-chars{position:relative;z-index:2;display:flex;gap:18px;margin:12px 0;flex-wrap:wrap;justify-content:center;padding:0 10px;}
+.char-card{display:flex;align-items:center;gap:10px;opacity:0;transform:translateX(-60px);transition:all 0.5s cubic-bezier(.2,1,.3,1);background:rgba(255,60,0,0.08);border:1px solid rgba(255,80,0,0.3);border-radius:10px;padding:8px 14px;}
+.char-card.visible{opacity:1;transform:translateX(0);}
+.char-avatar{font-size:22px;}
+.char-card-name{font-size:16px;font-weight:700;color:#ff8844;letter-spacing:2px;}
+#intro-bar{width:min(260px,80vw);height:5px;background:#222;border-radius:3px;margin-top:16px;overflow:hidden;position:relative;z-index:2;}
+#intro-progress{height:100%;background:linear-gradient(90deg,#ffd700,#ff4400);width:0%;}
+#intro-skip{position:relative;z-index:2;color:#555;font-size:11px;margin-top:10px;letter-spacing:2px;}
+/* Creator credit on intro */
+#creator-badge{position:absolute;bottom:14px;right:16px;color:rgba(255,200,100,0.7);font-size:11px;letter-spacing:1px;font-weight:600;z-index:10;text-align:right;pointer-events:none;}
+#creator-badge span{display:block;font-size:9px;color:rgba(255,150,50,0.5);letter-spacing:2px;}
+
+/* In-game creator watermark */
+#game-creator{position:fixed;bottom:6px;left:8px;color:rgba(255,200,100,0.45);font-size:10px;letter-spacing:1px;z-index:11;pointer-events:none;font-weight:600;}
+
+/* ── NAME INPUT SCREEN ── */
+#name-input-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#050510,#100505);z-index:99;display:none;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto;}
+#name-input-screen h2{color:#ffd700;font-family:'Bebas Neue',cursive;font-size:clamp(22px,5vw,36px);letter-spacing:4px;margin-bottom:6px;text-shadow:0 0 20px #ff8800;}
+#name-input-screen p{color:#888;font-size:13px;margin-bottom:24px;letter-spacing:2px;text-align:center;}
+.name-input-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 20px;width:100%;max-width:420px;}
+.name-input-card{background:rgba(255,255,255,0.04);border:2px solid rgba(255,100,0,0.3);border-radius:14px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.name-input-card .avatar{font-size:32px;}
+.name-input-card input{width:100%;background:rgba(255,100,0,0.1);border:1px solid rgba(255,100,0,0.5);border-radius:8px;color:#ff8844;font-size:15px;font-weight:700;text-align:center;padding:6px;letter-spacing:1px;outline:none;font-family:'Rajdhani',sans-serif;}
+.name-input-card input:focus{border-color:#ff6600;box-shadow:0 0 8px rgba(255,100,0,0.4);}
+.name-input-card .desc{color:#888;font-size:10px;text-align:center;}
+#name-confirm-btn{margin-top:20px;padding:12px 36px;background:linear-gradient(90deg,#ff6600,#ffaa00);color:#000;font-size:16px;font-weight:700;border:none;border-radius:10px;cursor:pointer;letter-spacing:2px;font-family:'Rajdhani',sans-serif;}
+
+/* ── CHAR SELECT ── */
+#char-select{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#050510,#100505);z-index:98;display:none;flex-direction:column;align-items:center;justify-content:center;}
+#char-select h2{color:#ffd700;font-family:'Bebas Neue',cursive;font-size:clamp(22px,5vw,36px);letter-spacing:4px;margin-bottom:6px;text-shadow:0 0 20px #ff8800;text-align:center;}
+#char-select p{color:#888;font-size:13px;margin-bottom:24px;letter-spacing:2px;}
+.char-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 20px;width:100%;max-width:420px;}
+.char-option{background:rgba(255,255,255,0.04);border:2px solid rgba(255,100,0,0.3);border-radius:14px;padding:16px;cursor:pointer;transition:all 0.2s;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.char-option:hover,.char-option:active{background:rgba(255,100,0,0.15);border-color:#ff6600;transform:scale(1.04);}
+.char-option .avatar{font-size:38px;}
+.char-option .name{color:#ff8844;font-size:16px;font-weight:bold;letter-spacing:1px;}
+.char-option .desc{color:#888;font-size:10px;text-align:center;}
+
+/* ── WEATHER SELECT ── */
+#weather-select{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:97;display:none;flex-direction:column;align-items:center;justify-content:center;}
+#weather-select h2{color:#ffd700;font-family:'Bebas Neue',cursive;font-size:clamp(22px,5vw,32px);letter-spacing:4px;margin-bottom:8px;text-shadow:0 0 20px #ff8800;text-align:center;}
+#weather-select p{color:#888;font-size:13px;margin-bottom:24px;}
+.weather-grid{display:flex;gap:14px;padding:0 20px;flex-wrap:wrap;justify-content:center;}
+.weather-option{background:rgba(255,255,255,0.05);border:2px solid rgba(255,255,255,0.2);border-radius:16px;padding:18px 20px;cursor:pointer;transition:all 0.2s;display:flex;flex-direction:column;align-items:center;gap:8px;min-width:90px;}
+.weather-option:hover,.weather-option:active{transform:scale(1.06);}
+.weather-option.summer{border-color:rgba(255,180,0,0.5);}.weather-option.summer:hover{background:rgba(255,180,0,0.15);border-color:#ffaa00;}
+.weather-option.winter{border-color:rgba(150,200,255,0.5);}.weather-option.winter:hover{background:rgba(150,200,255,0.15);border-color:#aaddff;}
+.weather-option.rainy{border-color:rgba(80,120,255,0.5);}.weather-option.rainy:hover{background:rgba(80,120,255,0.15);border-color:#5588ff;}
+.weather-option.night{border-color:rgba(100,50,200,0.5);}.weather-option.night:hover{background:rgba(100,50,200,0.15);border-color:#8855ff;}
+.weather-option .w-icon{font-size:40px;}
+.weather-option .w-name{color:#fff;font-size:15px;font-weight:bold;}
+.weather-option .w-desc{color:#888;font-size:10px;text-align:center;}
+
+/* ── SHOP ── */
+#shop{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(160deg,#050510 0%,#0a0020 100%);z-index:300;display:none;flex-direction:column;align-items:center;overflow-y:auto;}
+#shop-header{display:flex;align-items:center;gap:12px;padding:16px 20px 8px;width:100%;max-width:480px;}
+#shop-back-btn{background:rgba(255,100,0,0.2);border:2px solid rgba(255,100,0,0.6);color:#ff8844;font-size:14px;font-weight:700;border-radius:10px;padding:8px 16px;cursor:pointer;font-family:'Rajdhani',sans-serif;letter-spacing:1px;}
+#shop-back-btn:active{background:rgba(255,100,0,0.4);}
+#shop h2{color:#ffd700;font-family:'Bebas Neue',cursive;font-size:28px;letter-spacing:4px;flex:1;text-shadow:0 0 16px #ff8800;}
+#shop-cash-display{color:#00ff88;font-size:15px;font-weight:700;}
+.shop-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:10px 20px 40px;width:100%;max-width:480px;}
+.shop-item{background:rgba(255,255,255,0.04);border:2px solid rgba(255,100,0,0.25);border-radius:14px;padding:14px;cursor:pointer;transition:all 0.2s;text-align:center;}
+.shop-item:active{transform:scale(0.96);}
+.shop-item .s-icon{font-size:34px;margin-bottom:6px;}
+.shop-item .s-name{color:#ff8844;font-size:14px;font-weight:700;margin-bottom:3px;}
+.shop-item .s-desc{color:#777;font-size:10px;margin-bottom:8px;}
+.shop-item .s-price{color:#ffd700;font-size:13px;font-weight:700;}
+.shop-item.owned{border-color:#00ff44;}.shop-item.owned .s-price{color:#00ff44;}
+.shop-item.cant-afford{opacity:0.4;}
+.shop-section-title{color:#aaa;font-size:11px;letter-spacing:3px;padding:8px 20px 4px;width:100%;max-width:480px;text-transform:uppercase;}
+
+/* ── STATS SCREEN ── */
+#stats-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);background:rgba(0,0,0,0.88);border:2px solid rgba(255,200,50,0.4);border-radius:16px;padding:20px 28px;color:#fff;z-index:50;pointer-events:none;transition:transform 0.3s;min-width:220px;text-align:center;}
+#stats-panel.show{transform:translate(-50%,-50%) scale(1);}
+#stats-panel h3{color:#ffd700;font-family:'Bebas Neue',cursive;font-size:20px;letter-spacing:3px;margin-bottom:10px;}
+.stat-row{display:flex;justify-content:space-between;gap:20px;font-size:13px;color:#ccc;margin:4px 0;}
+.stat-val{color:#ff8844;font-weight:700;}
+
+/* ── GAME OVER ── */
+#gameover{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.93);z-index:200;display:none;flex-direction:column;align-items:center;justify-content:center;}
+#gameover h1{color:#ff2222;font-family:'Bebas Neue',cursive;font-size:clamp(44px,10vw,72px);letter-spacing:8px;text-shadow:0 0 30px #ff0000;}
+#gameover .go-sub{color:#aaa;font-size:15px;margin-top:10px;}
+#go-stats{color:#888;font-size:14px;margin-top:12px;}
+#go-best{color:#ffd700;font-size:13px;margin-top:6px;}
+#restart-btn{margin-top:28px;padding:14px 40px;background:linear-gradient(90deg,#ff6600,#ffaa00);color:#000;font-size:18px;font-weight:700;border:none;border-radius:10px;cursor:pointer;letter-spacing:2px;font-family:'Rajdhani',sans-serif;}
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+<!-- HUD -->
+<div id="ui">
+  <div id="hud">
+    <div id="player-name" style="font-size:16px;font-weight:bold;color:#ffd700;text-shadow:0 0 8px #ff8800;font-family:'Bebas Neue',cursive;letter-spacing:2px;">PLAYER</div>
+    <div>HP: <span id="hp-text">100</span></div>
+    <div id="health-bar"><div id="health-fill" style="width:100%"></div></div>
+    <div style="color:#00ff88;margin-top:4px;font-weight:700;">$<span id="cash">0</span></div>
+    <div style="color:#ff8800;font-size:12px;">Kills: <span id="kills">0</span></div>
+  </div>
+  <div id="wanted">
+    <span class="star" id="s1">★</span><span class="star" id="s2">★</span>
+    <span class="star" id="s3">★</span><span class="star" id="s4">★</span><span class="star" id="s5">★</span>
+  </div>
+  <div id="weapon-hud">
+    <div id="weapon-name">FISTS</div>
+    <div id="ammo">∞</div>
+  </div>
+  <div id="weather-indicator"></div>
+  <div id="shop-btn" onclick="openShop()">🛒 SHOP</div>
+  <div id="message"></div>
+  <div id="police-alert">⚠ POLICE SEARCHING ⚠</div>
+  <div id="stats-panel">
+    <h3>BEST RECORDS</h3>
+    <div class="stat-row"><span>Highest Kills</span><span class="stat-val" id="best-kills">0</span></div>
+    <div class="stat-row"><span>Most Money</span><span class="stat-val" id="best-cash">$0</span></div>
+    <div class="stat-row"><span>Items Bought</span><span class="stat-val" id="best-items">0</span></div>
+  </div>
+</div>
+
+<!-- Controls -->
+<div id="controls">
+  <div id="joystick-area"><div id="joystick-base"><div id="joystick-knob"></div></div></div>
+  <div id="action-buttons">
+    <div class="btn-row">
+      <div class="action-btn" id="btn-weapon">🔫SWAP</div>
+      <div class="action-btn" id="btn-grenade">💣</div>
+    </div>
+    <div class="btn-row">
+      <div class="action-btn" id="btn-rob">💰ROB</div>
+      <div class="action-btn" id="btn-enter">🚗CAR</div>
+    </div>
+    <div class="btn-row" style="justify-content:flex-end">
+      <div class="action-btn" id="btn-shoot">🔥FIRE</div>
+    </div>
+  </div>
+</div>
+
+<!-- In-game creator watermark -->
+<div id="game-creator">by Gariman Mishra</div>
+
+<!-- INTRO -->
+<div id="intro">
+  <canvas id="intro-stars" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
+  <canvas id="intro-cityscape" style="position:absolute;bottom:0;left:0;width:100%;height:45%;pointer-events:none;"></canvas>
+  <div id="intro-logo">
+    <div class="gtc-title">GRAND THEFT CITY</div>
+    <div class="gtc-sub">OPEN WORLD CHAOS</div>
+    <div class="gtc-tagline">⚡ THE STREETS AWAIT ⚡</div>
+  </div>
+  <div id="intro-chars">
+    <div class="char-card" id="cc1"><div class="char-avatar">😈</div><div class="char-card-name" id="cc1n">PLAYER 1</div></div>
+    <div class="char-card" id="cc2"><div class="char-avatar">🔥</div><div class="char-card-name" id="cc2n">PLAYER 2</div></div>
+    <div class="char-card" id="cc3"><div class="char-avatar">💀</div><div class="char-card-name" id="cc3n">PLAYER 3</div></div>
+    <div class="char-card" id="cc4"><div class="char-avatar">⚡</div><div class="char-card-name" id="cc4n">PLAYER 4</div></div>
+  </div>
+  <div id="intro-bar"><div id="intro-progress"></div></div>
+  <div id="intro-skip">TAP TO SKIP</div>
+  <div id="creator-badge">Gariman Mishra<span>GAME DEVELOPER</span></div>
+</div>
+
+<!-- Name Input -->
+<div id="name-input-screen">
+  <h2>ENTER PLAYER NAMES</h2>
+  <p>CUSTOMIZE YOUR CREW</p>
+  <div class="name-input-grid">
+    <div class="name-input-card">
+      <div class="avatar">😈</div>
+      <input type="text" id="p1-name" maxlength="12" placeholder="PLAYER 1">
+      <div class="desc">The Silent Killer</div>
+    </div>
+    <div class="name-input-card">
+      <div class="avatar">🔥</div>
+      <input type="text" id="p2-name" maxlength="12" placeholder="PLAYER 2">
+      <div class="desc">Street Enforcer</div>
+    </div>
+    <div class="name-input-card">
+      <div class="avatar">💀</div>
+      <input type="text" id="p3-name" maxlength="12" placeholder="PLAYER 3">
+      <div class="desc">The Ghost</div>
+    </div>
+    <div class="name-input-card">
+      <div class="avatar">⚡</div>
+      <input type="text" id="p4-name" maxlength="12" placeholder="PLAYER 4">
+      <div class="desc">Thunder Fist</div>
+    </div>
+  </div>
+  <button id="name-confirm-btn" onclick="confirmNames()">CONFIRM NAMES ▶</button>
+</div>
+
+<!-- Character Select -->
+<div id="char-select">
+  <h2>CHOOSE YOUR CHARACTER</h2>
+  <p>SELECT YOUR GANGSTER</p>
+  <div class="char-grid" id="char-grid-container"></div>
+</div>
+
+<!-- Weather Select -->
+<div id="weather-select">
+  <h2>CHOOSE YOUR WORLD</h2>
+  <p>SET THE MOOD</p>
+  <div class="weather-grid">
+    <div class="weather-option summer" onclick="selectWeather('summer')">
+      <div class="w-icon">☀️</div><div class="w-name">SUMMER</div><div class="w-desc">Hot streets, dusty roads</div>
+    </div>
+    <div class="weather-option winter" onclick="selectWeather('winter')">
+      <div class="w-icon">❄️</div><div class="w-name">WINTER</div><div class="w-desc">Icy roads, snow fog</div>
+    </div>
+    <div class="weather-option rainy" onclick="selectWeather('rainy')">
+      <div class="w-icon">🌧️</div><div class="w-name">RAINY</div><div class="w-desc">Wet roads, dark skies</div>
+    </div>
+    <div class="weather-option night" onclick="selectWeather('night')">
+      <div class="w-icon">🌃</div><div class="w-name">NIGHT</div><div class="w-desc">Glowing city, neon lights</div>
+    </div>
+  </div>
+</div>
+
+<!-- Shop -->
+<div id="shop">
+  <div id="shop-header">
+    <button id="shop-back-btn" onclick="closeShop()">◀ BACK</button>
+    <h2>CITY SHOP</h2>
+    <div id="shop-cash-display">$<span id="shop-cash">0</span></div>
+  </div>
+  <div class="shop-section-title">⚔️ Weapons</div>
+  <div class="shop-grid" id="shop-weapons-grid"></div>
+  <div class="shop-section-title">❤️ Health & Armor</div>
+  <div class="shop-grid" id="shop-health-grid"></div>
+  <div class="shop-section-title">🚀 Upgrades</div>
+  <div class="shop-grid" id="shop-upgrades-grid"></div>
+</div>
+
+<!-- Game Over -->
+<div id="gameover">
+  <h1>YOU DIED</h1>
+  <div class="go-sub">GAME OVER</div>
+  <p id="go-stats"></p>
+  <p id="go-best"></p>
+  <button id="restart-btn" onclick="restartGame()">PLAY AGAIN</button>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  CANVAS SETUP
+// ══════════════════════════════════════════════════════════
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+function resizeCanvas(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// ══════════════════════════════════════════════════════════
+//  SAVE / LOAD SYSTEM
+// ══════════════════════════════════════════════════════════
+const SAVE_KEY = 'gtc_save_v2';
+let saveData = {
+  highestKills: 0,
+  mostCash: 0,
+  totalItemsBought: 0,
+  playerNames: ['PLAYER 1','PLAYER 2','PLAYER 3','PLAYER 4'],
+  ownedItems: []
+};
+
+function loadSave(){
+  try{
+    const d = localStorage.getItem(SAVE_KEY);
+    if(d) saveData = {...saveData, ...JSON.parse(d)};
+  }catch(e){}
+}
+function writeSave(){
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify(saveData)); }catch(e){}
+}
+loadSave();
+
+// ══════════════════════════════════════════════════════════
+//  MUSIC
+// ══════════════════════════════════════════════════════════
+let audioCtx=null, musicPlaying=false;
+function startMusic(){
+  try{
+    audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    const master=audioCtx.createGain(); master.gain.value=0.16; master.connect(audioCtx.destination);
+    const bass=[55,55,82,82,55,55,73,73]; let bassTime=audioCtx.currentTime;
+    function scheduleBass(){ bass.forEach((f,i)=>{ const o=audioCtx.createOscillator(),g=audioCtx.createGain(); o.type='sawtooth';o.frequency.value=f; g.gain.setValueAtTime(0.4,bassTime+i*0.25); g.gain.exponentialRampToValueAtTime(0.01,bassTime+i*0.25+0.22); o.connect(g);g.connect(master); o.start(bassTime+i*0.25);o.stop(bassTime+i*0.25+0.25); }); bassTime+=bass.length*0.25; }
+    for(let i=0;i<8;i++) scheduleBass();
+    const bL=setInterval(()=>{ if(!audioCtx) return clearInterval(bL); scheduleBass(); },2000);
+    const mel=[330,330,440,0,330,294,0,330,392,0,440,330,0,294,330,0]; let melTime=audioCtx.currentTime+0.5;
+    function scheduleMelody(){ mel.forEach((f,i)=>{ if(!f) return; const o=audioCtx.createOscillator(),g=audioCtx.createGain(); o.type='square';o.frequency.value=f; g.gain.setValueAtTime(0.13,melTime+i*0.125); g.gain.exponentialRampToValueAtTime(0.001,melTime+i*0.125+0.1); o.connect(g);g.connect(master); o.start(melTime+i*0.125);o.stop(melTime+i*0.125+0.13); }); melTime+=mel.length*0.125; }
+    for(let i=0;i<4;i++) scheduleMelody();
+    const mL=setInterval(()=>{ if(!audioCtx) return clearInterval(mL); scheduleMelody(); },2000);
+    function scheduleHat(t){ for(let i=0;i<8;i++){ const buf=audioCtx.createBuffer(1,audioCtx.sampleRate*0.04,audioCtx.sampleRate),d=buf.getChannelData(0); for(let j=0;j<d.length;j++) d[j]=(Math.random()*2-1)*Math.exp(-j/200); const src=audioCtx.createBufferSource(),g=audioCtx.createGain(); g.gain.value=0.08; src.buffer=buf; src.connect(g);g.connect(master); src.start(t+i*0.125); } }
+    scheduleHat(audioCtx.currentTime);
+    const hL=setInterval(()=>{ if(!audioCtx) return clearInterval(hL); scheduleHat(audioCtx.currentTime); },1000);
+    musicPlaying=true;
+  }catch(e){}
+}
+
+// ══════════════════════════════════════════════════════════
+//  CONSTANTS
+// ══════════════════════════════════════════════════════════
+const WORLD_SIZE = 2000; // 2km map
+const TILE = 40;
+const CAM_LERP = 0.1;
+
+// ══════════════════════════════════════════════════════════
+//  GAME STATE
+// ══════════════════════════════════════════════════════════
+let gameRunning=false, camera={x:0,y:0};
+let wantedLevel=0, policeSearchActive=false;
+let pedDeathCount=0, cash=0, killCount=0, frameCount=0;
+let wantedDecayTimer=0, fireCooldown=0;
+let chosenChar={name:'PLAYER',avatar:'😈'};
+let currentWeather='summer';
+let rainDrops=[], snowFlakes=[], nightStars=[], nightLights=[];
+let crimeCount=0; // for the 2-stars-per-4-crimes rule
+let wantedStarDecayTimer=0; // 7s per star decay
+let lastHealthDamageTime=0; // for auto-heal
+let healthRegenTimer=0;
+let playerNames=['PLAYER 1','PLAYER 2','PLAYER 3','PLAYER 4'];
+let shopOpen=false;
+let ownedUpgrades={}; // speed, armor, etc.
+
+// ══════════════════════════════════════════════════════════
+//  WEATHER THEMES
+// ══════════════════════════════════════════════════════════
+const WEATHER = {
+  summer:{ sky:'#87CEEB', ground:'#3a7a2a', road:'#555566', ambient:'rgba(255,200,100,0.06)', label:'☀️ SUMMER' },
+  winter:{ sky:'#b0c8e8', ground:'#d0e8f0', road:'#778899', ambient:'rgba(180,220,255,0.10)', label:'❄️ WINTER' },
+  rainy: { sky:'#334455', ground:'#2a5a22', road:'#445566', ambient:'rgba(40,60,120,0.18)', label:'🌧️ RAINY' },
+  night: { sky:'#05050f', ground:'#0a1a0a', road:'#1a1a2a', ambient:'rgba(60,0,120,0.08)', label:'🌃 NIGHT' }
+};
+
+// ══════════════════════════════════════════════════════════
+//  WEAPONS
+// ══════════════════════════════════════════════════════════
+const WEAPON_DEFS=[
+  {name:'FISTS',  damage:18, ammo:Infinity, fireRate:28, isGun:false},
+  {name:'AK-47',  damage:32, ammo:120,      fireRate:6,  isGun:true},
+  {name:'SMG',    damage:18, ammo:200,      fireRate:3,  isGun:true},
+  {name:'SNIPER', damage:90, ammo:20,       fireRate:50, isGun:true},
+  {name:'RPG',    damage:140,ammo:5,        fireRate:60, isGun:true, explosive:true},
+  {name:'GRENADE',damage:110,ammo:6,        fireRate:45, isGun:false,throwable:true}
+];
+let weapons=[], currentWeapon=0;
+
+// ══════════════════════════════════════════════════════════
+//  SHOP ITEMS
+// ══════════════════════════════════════════════════════════
+const SHOP_ITEMS = [
+  // Weapons
+  {id:'ak47',    name:'AK-47',      icon:'🔫', desc:'Full auto rifle',         price:800,  type:'weapon',  weaponIdx:1},
+  {id:'smg',     name:'SMG',        icon:'🔫', desc:'Fast fire rate',          price:500,  type:'weapon',  weaponIdx:2},
+  {id:'sniper',  name:'Sniper',     icon:'🎯', desc:'Long range power',        price:1200, type:'weapon',  weaponIdx:3},
+  {id:'rpg',     name:'RPG',        icon:'🚀', desc:'Explosive launcher',      price:2000, type:'weapon',  weaponIdx:4},
+  {id:'grenade', name:'Grenades x3',icon:'💣', desc:'Area explosion',          price:400,  type:'ammo',    weaponIdx:5},
+  {id:'ak47ammo',name:'AK Ammo',    icon:'🔹', desc:'+60 AK rounds',           price:300,  type:'ammo',    weaponIdx:1},
+  // Health
+  {id:'medkit',  name:'Med Kit',    icon:'💊', desc:'Restore 50 HP',           price:250,  type:'health',  hpAmt:50},
+  {id:'fullheal',name:'Full Heal',  icon:'❤️', desc:'Restore 100 HP',          price:600,  type:'health',  hpAmt:100},
+  {id:'armor',   name:'Body Armor', icon:'🛡️', desc:'+30 max HP',              price:900,  type:'upgrade', upg:'armor'},
+  // Upgrades
+  {id:'speed',   name:'Speed Boost',icon:'👟', desc:'Move 30% faster',         price:700,  type:'upgrade', upg:'speed'},
+  {id:'carkey',  name:'Super Car',  icon:'🏎️', desc:'Spawn fast car nearby',   price:1500, type:'special', special:'spawncar'},
+  {id:'wanted0', name:'Bribe Cops', icon:'⭐', desc:'Clear all wanted stars',  price:1000, type:'special', special:'clearwanted'},
+  {id:'rpgammo', name:'RPG Ammo',   icon:'🚀', desc:'+3 RPG rockets',          price:800,  type:'ammo',    weaponIdx:4},
+  {id:'sniperammo',name:'Sniper Ammo',icon:'🎯',desc:'+10 sniper rounds',      price:350,  type:'ammo',    weaponIdx:3},
+];
+
+// ══════════════════════════════════════════════════════════
+//  PLAYER
+// ══════════════════════════════════════════════════════════
+let player={x:1000,y:1000,angle:0,speed:2.4,hp:100,maxHp:100,inCar:false,car:null,size:13};
+
+// ══════════════════════════════════════════════════════════
+//  WORLD
+// ══════════════════════════════════════════════════════════
+let worldMap=[], buildings=[], parkAreas=[];
+
+function generateWorld(){
+  worldMap=[]; buildings=[]; parkAreas=[];
+  const W=Math.ceil(WORLD_SIZE/TILE);
+  for(let y=0;y<W;y++){worldMap[y]=[];for(let x=0;x<W;x++) worldMap[y][x]=0;}
+  const roadCols=[], roadRows=[];
+  for(let i=2;i<W-1;i+=5){roadCols.push(i,i+1);}
+  for(let i=2;i<W-1;i+=5){roadRows.push(i,i+1);}
+  for(let y=0;y<W;y++) for(let x=0;x<W;x++){
+    const rc=roadCols.includes(x),rr=roadRows.includes(y);
+    if(rc&&rr) worldMap[y][x]=3;
+    else if(rc) worldMap[y][x]=2;
+    else if(rr) worldMap[y][x]=1;
+  }
+  const palette=['#8899aa','#7788aa','#9988bb','#aa8877','#778899','#667788','#aabbcc','#bbaa99','#99aabb','#aa9988'];
+  for(let by=0;by<W-2;by+=5) for(let bx=0;bx<W-2;bx+=5){
+    const ty=by+2,tx=bx+2;
+    if(ty>=W-2||tx>=W-2) continue;
+    const r=Math.random();
+    if(r<0.10){
+      for(let dy=0;dy<3;dy++) for(let dx=0;dx<3;dx++) if(ty+dy<W&&tx+dx<W) worldMap[ty+dy][tx+dx]=5;
+      parkAreas.push({x:tx*TILE,y:ty*TILE,w:3*TILE,h:3*TILE});
+    } else {
+      const bc=Math.floor(Math.random()*2)+1;
+      for(let b=0;b<bc;b++){
+        const bw=(Math.floor(Math.random()*2)+1)*TILE-8;
+        const bh=(Math.floor(Math.random()*2)+1)*TILE-8;
+        const bx2=tx*TILE+Math.random()*(3*TILE-bw);
+        const by2=ty*TILE+Math.random()*(3*TILE-bh);
+        const glowCol=['#ff6600','#ffaa00','#00aaff','#ff00aa','#00ffaa','#aa00ff'];
+        buildings.push({x:bx2,y:by2,w:Math.max(bw,28),h:Math.max(bh,28),color:palette[Math.floor(Math.random()*palette.length)],roofColor:'#445566',hasWindows:Math.random()>0.25,glowColor:glowCol[Math.floor(Math.random()*glowCol.length)],height:Math.floor(Math.random()*4)+1});
+      }
+      for(let dy=0;dy<3;dy++) for(let dx=0;dx<3;dx++) if(ty+dy<W&&tx+dx<W) worldMap[ty+dy][tx+dx]=4;
+    }
+  }
+}
+
+// Find a safe spawn position on road/clear area
+function findSafeSpawn(){
+  for(let attempt=0;attempt<100;attempt++){
+    const x=200+Math.random()*(WORLD_SIZE-400);
+    const y=200+Math.random()*(WORLD_SIZE-400);
+    if(!collidesBuilding(x,y,20)) return {x,y};
+  }
+  return {x:WORLD_SIZE/2, y:WORLD_SIZE/2};
+}
+
+// ══════════════════════════════════════════════════════════
+//  CARS
+// ══════════════════════════════════════════════════════════
+let cars=[];
+const CAR_COLORS=['#cc2222','#2255cc','#22aa44','#ddcc22','#cc6622','#6622cc','#22cccc','#cccccc','#111111','#ff8844','#aa22aa','#44aa88'];
+function spawnCars(){
+  cars=[];
+  // More cars for bigger map
+  for(let i=0;i<80;i++){
+    const x=100+Math.random()*(WORLD_SIZE-200);
+    const y=100+Math.random()*(WORLD_SIZE-200);
+    cars.push({x,y,angle:Math.random()*Math.PI*2,color:CAR_COLORS[i%CAR_COLORS.length],roofColor:CAR_COLORS[(i+4)%CAR_COLORS.length],w:30,h:18,occupied:false,isPolice:false,speed:0,maxSpeed:4.5,id:i,isSuperCar:false});
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  PEDESTRIANS
+// ══════════════════════════════════════════════════════════
+let pedestrians=[];
+const PED_SKIN=['#ffaa88','#ffcc88','#ff9977','#ffbb99','#ee9966'];
+
+function spawnPeds(){
+  pedestrians=[];
+  // 4 named gangsters from player-entered names
+  const gangsterEmojis=['😈','🔥','💀','⚡'];
+  playerNames.forEach((name,i)=>{
+    const angle=(i/4)*Math.PI*2;
+    const d=300+Math.random()*500;
+    const spawn=findSafeSpawnNear(WORLD_SIZE/2+Math.cos(angle)*d, WORLD_SIZE/2+Math.sin(angle)*d);
+    pedestrians.push({
+      x:spawn.x, y:spawn.y,
+      name, hp:80, maxHp:80,
+      angle:Math.random()*Math.PI*2, speed:0.75+Math.random()*0.4,
+      color:PED_SKIN[i%PED_SKIN.length], dead:false,
+      fleeing:false, fleeTimer:0, moveTimer:Math.random()*120,
+      hostile:false, attackTimer:0, gangster:true,
+      cash:80+Math.floor(Math.random()*220), emoji:gangsterEmojis[i]
+    });
+  });
+  // Extra random peds for city life
+  const genericNames=['MOHAN','RAJAN','SURESH','BABU','VIJAY','RAHUL','AMAR','DEEPAK','SUNNY','ROCKY'];
+  for(let i=0;i<20;i++){
+    const spawn=findSafeSpawn();
+    pedestrians.push({
+      x:spawn.x, y:spawn.y,
+      name:genericNames[i%genericNames.length], hp:40, maxHp:40,
+      angle:Math.random()*Math.PI*2, speed:0.5+Math.random()*0.3,
+      color:PED_SKIN[Math.floor(Math.random()*PED_SKIN.length)], dead:false,
+      fleeing:false, fleeTimer:0, moveTimer:Math.random()*120,
+      hostile:false, attackTimer:0, gangster:false,
+      cash:20+Math.floor(Math.random()*80), emoji:'🧍'
+    });
+  }
+}
+
+function findSafeSpawnNear(px,py){
+  for(let attempt=0;attempt<30;attempt++){
+    const x=Math.max(50,Math.min(WORLD_SIZE-50, px+(Math.random()-0.5)*200));
+    const y=Math.max(50,Math.min(WORLD_SIZE-50, py+(Math.random()-0.5)*200));
+    if(!collidesBuilding(x,y,18)) return {x,y};
+  }
+  return {x:px,y:py};
+}
+
+// ══════════════════════════════════════════════════════════
+//  POLICE
+// ══════════════════════════════════════════════════════════
+let policeUnits=[];
+function spawnPolice(count){
+  for(let i=0;i<count;i++){
+    const ang=Math.random()*Math.PI*2;
+    const d=240+Math.random()*130;
+    const px=player.x+Math.cos(ang)*d, py=player.y+Math.sin(ang)*d;
+    const spawn=findSafeSpawnNear(px,py);
+    policeUnits.push({x:spawn.x,y:spawn.y,hp:90,maxHp:90,angle:0,speed:1.4,dead:false,attackTimer:0,chasing:true,size:11,name:'POLICE',gangster:false,color:'#ffbb99',spawnTime:frameCount});
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  BULLETS & FX
+// ══════════════════════════════════════════════════════════
+let bullets=[], explosions=[];
+function fireBullet(x,y,angle,damage,spd,fromPlayer,explosive){ bullets.push({x,y,angle,damage,speed:spd||9,fromPlayer,explosive:!!explosive,grenade:false,life:110,trail:[]}); }
+function throwGrenade(x,y,angle){ bullets.push({x,y,angle,damage:110,speed:5,fromPlayer:true,grenade:true,explosive:false,life:80,fuseTimer:50,trail:[]}); }
+function createExplosion(x,y,type){
+  const cols=type==='blood'?['#cc0000','#ff2222','#880000']:['#ff8800','#ffcc00','#ff4400','#ffff44'];
+  for(let i=0;i<16;i++){const a=Math.random()*Math.PI*2,s=1+Math.random()*6;explosions.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:28+Math.random()*22,size:2+Math.random()*7,color:cols[Math.floor(Math.random()*cols.length)]});}
+}
+
+// ══════════════════════════════════════════════════════════
+//  JOYSTICK
+// ══════════════════════════════════════════════════════════
+let joystick={active:false,dx:0,dy:0,id:-1};
+const jBase=document.getElementById('joystick-base');
+const jKnob=document.getElementById('joystick-knob');
+const jArea=document.getElementById('joystick-area');
+function getJoyPos(touch){
+  const r=jBase.getBoundingClientRect();
+  const cx=r.left+r.width/2,cy=r.top+r.height/2;
+  const dx=touch.clientX-cx,dy=touch.clientY-cy;
+  const len=Math.sqrt(dx*dx+dy*dy),maxR=42;
+  const clamped=Math.min(len,maxR);
+  const nx=len>0?dx/len:0,ny=len>0?dy/len:0;
+  return{px:nx*clamped,py:ny*clamped,nx:clamped===maxR?nx:dx/maxR,ny:clamped===maxR?ny:dy/maxR};
+}
+jArea.addEventListener('touchstart',e=>{e.preventDefault();const t=e.changedTouches[0];joystick.active=true;joystick.id=t.identifier;},{passive:false});
+jArea.addEventListener('touchmove',e=>{e.preventDefault();for(const t of e.changedTouches){if(t.identifier===joystick.id){const p=getJoyPos(t);joystick.dx=p.nx;joystick.dy=p.ny;jKnob.style.transform=`translate(calc(-50% + ${p.px}px),calc(-50% + ${p.py}px))`;}}},{passive:false});
+jArea.addEventListener('touchend',e=>{e.preventDefault();joystick.active=false;joystick.dx=0;joystick.dy=0;jKnob.style.transform='translate(-50%,-50%)';},{passive:false});
+
+// ══════════════════════════════════════════════════════════
+//  ACTION BUTTONS
+// ══════════════════════════════════════════════════════════
+function addBtn(id,fn){
+  const el=document.getElementById(id);
+  el.addEventListener('touchstart',e=>{e.preventDefault();fn();},{passive:false});
+  el.addEventListener('mousedown',e=>{e.preventDefault();fn();});
+}
+addBtn('btn-shoot',()=>handleShoot());
+addBtn('btn-enter',()=>handleEnterCar());
+addBtn('btn-rob',()=>handleRob());
+addBtn('btn-weapon',()=>cycleWeapon());
+addBtn('btn-grenade',()=>throwGrenadeAction());
+
+const keys={};
+document.addEventListener('keydown',e=>{keys[e.key]=true;});
+document.addEventListener('keyup',e=>{keys[e.key]=false;});
+
+// ══════════════════════════════════════════════════════════
+//  GAME ACTIONS
+// ══════════════════════════════════════════════════════════
+function handleShoot(){
+  if(!gameRunning||shopOpen) return;
+  const w=weapons[currentWeapon];
+  if(fireCooldown>0||w.throwable) return;
+  if(w.ammo!==Infinity&&w.ammo<=0){showMessage('OUT OF AMMO!');return;}
+  fireCooldown=w.fireRate;
+  if(w.ammo!==Infinity) weapons[currentWeapon].ammo--;
+  if(w.isGun){
+    const spread=w.name==='SMG'?(Math.random()-0.5)*0.15:0;
+    fireBullet(player.x,player.y,player.angle+spread,w.damage,w.name==='SNIPER'?18:10,true,w.explosive);
+  } else {
+    meleeAttack();
+  }
+  updateWeaponHUD();
+  registerCrime(0);
+}
+
+function meleeAttack(){
+  [...pedestrians,...policeUnits].forEach(e=>{
+    if(e.dead) return;
+    const dx=e.x-player.x,dy=e.y-player.y;
+    if(Math.sqrt(dx*dx+dy*dy)<44){e.hp-=weapons[currentWeapon].damage;e.hostile=true;if(e.hp<=0) killEntity(e,true);}
+  });
+}
+
+function throwGrenadeAction(){
+  if(!gameRunning||shopOpen) return;
+  const gw=weapons.find(w=>w.name==='GRENADE');
+  if(!gw||gw.ammo<=0){showMessage('NO GRENADES!');return;}
+  gw.ammo--;
+  throwGrenade(player.x,player.y,player.angle);
+  registerCrime(1);
+  updateWeaponHUD();
+}
+
+function cycleWeapon(){currentWeapon=(currentWeapon+1)%weapons.length;updateWeaponHUD();}
+
+function handleEnterCar(){
+  if(!gameRunning||shopOpen) return;
+  if(player.inCar){
+    const exitAngle=player.car.angle+Math.PI/2;
+    player.x=player.car.x+Math.cos(exitAngle)*28;
+    player.y=player.car.y+Math.sin(exitAngle)*28;
+    if(collidesBuilding(player.x,player.y,14)){player.x=player.car.x;player.y=player.car.y+30;}
+    player.car.occupied=false;player.car.speed=0;player.inCar=false;player.car=null;
+    showMessage('EXITED VEHICLE');
+  } else {
+    let closest=null,minD=75;
+    cars.forEach(c=>{if(c.occupied) return;const d=dist(player.x,player.y,c.x,c.y);if(d<minD){minD=d;closest=c;}});
+    if(closest){player.inCar=true;player.car=closest;closest.occupied=true;showMessage('VEHICLE ACQUIRED!');registerCrime(0);}
+    else showMessage('NO CAR NEARBY');
+  }
+}
+
+function handleRob(){
+  if(!gameRunning||shopOpen) return;
+  let found=false;
+  pedestrians.forEach(p=>{
+    if(p.dead) return;
+    const d=dist(player.x,player.y,p.x,p.y);
+    if(d<55){
+      cash+=p.cash;document.getElementById('cash').textContent=cash;
+      p.fleeing=true;p.fleeTimer=300;
+      showMessage('+$'+p.cash+' ROBBED!');
+      p.cash=Math.floor(p.cash*0.3); // less next time
+      found=true;registerCrime(1);
+    }
+  });
+  if(!found) showMessage('NOBODY NEARBY');
+}
+
+// ══════════════════════════════════════════════════════════
+//  WANTED / POLICE SYSTEM - FIXED
+// ══════════════════════════════════════════════════════════
+function registerCrime(seriousness){
+  crimeCount++;
+  // Random chance to increase wanted - makes it unpredictable
+  let shouldIncrease=false;
+  if(seriousness>=1){
+    // Serious crime: 50% chance each time
+    shouldIncrease=Math.random()<0.5;
+  } else {
+    // Minor: 25% chance
+    shouldIncrease=Math.random()<0.25;
+  }
+  if(shouldIncrease && wantedLevel<5){
+    wantedLevel=Math.min(5,wantedLevel+1);
+    updateWantedStars();
+    triggerPoliceResponse();
+  }
+  // Every 4 crimes, guarantee at least 2 stars to stop crime
+  if(crimeCount%4===0 && wantedLevel<2){
+    wantedLevel=2;
+    updateWantedStars();
+    triggerPoliceResponse();
+    showMessage('⚠ COPS ON THE WAY!');
+  }
+}
+
+function triggerPoliceResponse(){
+  if(wantedLevel>=1){
+    const needed=Math.min(wantedLevel*2,8);
+    const alive=policeUnits.filter(p=>!p.dead).length;
+    if(alive<needed) spawnPolice(needed-alive);
+  }
+}
+
+function updateWantedStars(){ for(let i=1;i<=5;i++) document.getElementById('s'+i).className='star'+(i<=wantedLevel?' active':''); }
+
+// Wanted star decay: each star decreases every 7 seconds (420 frames)
+function updateWantedDecay(){
+  if(wantedLevel<=0) return;
+  const nearCop=policeUnits.some(c=>!c.dead&&dist(player.x,player.y,c.x,c.y)<300);
+  if(nearCop){wantedStarDecayTimer=0;return;}
+  wantedStarDecayTimer++;
+  if(wantedStarDecayTimer>=420){ // 7 seconds at 60fps
+    wantedLevel=Math.max(0,wantedLevel-1);
+    updateWantedStars();
+    wantedStarDecayTimer=0;
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  HEALTH AUTO-REGEN SYSTEM
+// ══════════════════════════════════════════════════════════
+function updateHealthRegen(){
+  if(player.hp<=0||player.hp>=player.maxHp) return;
+  // Wait 2 seconds after last damage before regenning
+  const now=frameCount;
+  if(now-lastHealthDamageTime<120) return; // 2 seconds pause
+  healthRegenTimer++;
+  // Regen 1 HP every 0.5s (30 frames)
+  if(healthRegenTimer>=30){
+    player.hp=Math.min(player.maxHp, player.hp+1);
+    updateHP();
+    healthRegenTimer=0;
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  KILL / DAMAGE
+// ══════════════════════════════════════════════════════════
+function killEntity(e,fromPlayer){
+  e.dead=true;e.hp=0;
+  if(fromPlayer){killCount++;document.getElementById('kills').textContent=killCount;}
+  if(pedestrians.includes(e)){
+    pedDeathCount++;
+    if(pedDeathCount>=2){startPoliceSearch();pedDeathCount=0;}
+    registerCrime(1);
+  }
+  createExplosion(e.x,e.y,'blood');
+}
+
+function startPoliceSearch(){
+  policeSearchActive=true;
+  document.getElementById('police-alert').style.opacity='1';
+  wantedLevel=Math.min(5,wantedLevel+1);
+  updateWantedStars();
+  spawnPolice(3);
+  showMessage('⚠ POLICE INCOMING ⚠');
+  setTimeout(()=>{policeSearchActive=false;document.getElementById('police-alert').style.opacity='0';},10000);
+}
+
+function damagePlayer(amt){
+  // Armor reduces damage
+  if(ownedUpgrades.armor) amt=Math.floor(amt*0.65);
+  player.hp=Math.max(0,player.hp-amt);
+  lastHealthDamageTime=frameCount;
+  healthRegenTimer=0;
+  updateHP();
+  if(player.hp<=0) triggerGameOver();
+}
+
+function updateHP(){
+  const pct=(player.hp/player.maxHp)*100;
+  document.getElementById('health-fill').style.width=pct+'%';
+  document.getElementById('hp-text').textContent=Math.floor(player.hp);
+  const f=document.getElementById('health-fill');
+  f.style.background=pct<25?'linear-gradient(90deg,#ff2222,#ff6644)':pct<50?'linear-gradient(90deg,#ffaa00,#ffcc44)':'linear-gradient(90deg,#00ff44,#88ff00)';
+}
+
+function triggerGameOver(){
+  gameRunning=false;
+  // Save progress
+  let updated=false;
+  if(killCount>saveData.highestKills){saveData.highestKills=killCount;updated=true;}
+  if(cash>saveData.mostCash){saveData.mostCash=cash;updated=true;}
+  if(updated) writeSave();
+  document.getElementById('go-stats').textContent='Kills: '+killCount+' | Cash: $'+cash;
+  document.getElementById('go-best').textContent='Best: Kills '+saveData.highestKills+' | Cash $'+saveData.mostCash;
+  document.getElementById('gameover').style.display='flex';
+}
+
+function restartGame(){document.getElementById('gameover').style.display='none';initGame();}
+
+// ══════════════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════════════
+function dist(x1,y1,x2,y2){const dx=x2-x1,dy=y2-y1;return Math.sqrt(dx*dx+dy*dy);}
+let msgTO=null;
+function showMessage(txt){const el=document.getElementById('message');el.textContent=txt;el.style.opacity='1';clearTimeout(msgTO);msgTO=setTimeout(()=>el.style.opacity='0',2400);}
+function updateWeaponHUD(){const w=weapons[currentWeapon];document.getElementById('weapon-name').textContent=w.name;document.getElementById('ammo').textContent=w.ammo===Infinity?'∞':w.ammo;}
+function collidesBuilding(x,y,r){for(const b of buildings){if(x+r>b.x&&x-r<b.x+b.w&&y+r>b.y&&y-r<b.y+b.h) return b;}return null;}
+function clamp(x,y){return[Math.max(16,Math.min(WORLD_SIZE-16,x)),Math.max(16,Math.min(WORLD_SIZE-16,y))];}
+function lighten(hex,amt){const n=parseInt(hex.slice(1),16);const r=Math.min(255,(n>>16)+amt),g=Math.min(255,((n>>8)&0xff)+amt),b=Math.min(255,(n&0xff)+amt);return'#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');}
+
+// ══════════════════════════════════════════════════════════
+//  WEATHER PARTICLES
+// ══════════════════════════════════════════════════════════
+function initWeatherParticles(){
+  rainDrops=[];snowFlakes=[];nightStars=[];nightLights=[];
+  if(currentWeather==='rainy'){ for(let i=0;i<220;i++) rainDrops.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,vy:9+Math.random()*7,len:9+Math.random()*13}); }
+  if(currentWeather==='winter'){ for(let i=0;i<130;i++) snowFlakes.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,vy:0.9+Math.random()*1.6,vx:(Math.random()-0.5)*0.7,r:1.5+Math.random()*2.5}); }
+  if(currentWeather==='night'){
+    for(let i=0;i<200;i++) nightStars.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height*0.6,r:0.5+Math.random()*1.5,twinkle:Math.random()*Math.PI*2});
+    // Street lights at various positions around map
+    for(let i=0;i<60;i++) nightLights.push({wx:100+Math.random()*(WORLD_SIZE-200),wy:100+Math.random()*(WORLD_SIZE-200),col:['#ffcc44','#ff8822','#44aaff','#ff44aa','#44ffaa'][Math.floor(Math.random()*5)]});
+  }
+}
+
+function drawWeatherFX(){
+  if(currentWeather==='rainy'){
+    ctx.strokeStyle='rgba(140,180,255,0.4)';ctx.lineWidth=1;
+    rainDrops.forEach(d=>{ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(d.x-2,d.y+d.len);ctx.stroke();d.y+=d.vy;d.x-=1;if(d.y>canvas.height){d.y=-d.len;d.x=Math.random()*canvas.width;}if(d.x<0) d.x=canvas.width;});
+    ctx.fillStyle='rgba(20,30,60,0.15)';ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+  if(currentWeather==='winter'){
+    ctx.fillStyle='rgba(255,255,255,0.8)';
+    snowFlakes.forEach(s=>{ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();s.y+=s.vy;s.x+=s.vx;if(s.y>canvas.height){s.y=-4;s.x=Math.random()*canvas.width;}if(s.x<0) s.x=canvas.width;if(s.x>canvas.width) s.x=0;});
+    ctx.fillStyle='rgba(180,220,255,0.05)';ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+  if(currentWeather==='summer'){ctx.fillStyle='rgba(255,200,80,0.03)';ctx.fillRect(0,0,canvas.width,canvas.height);}
+  if(currentWeather==='night'){
+    // Draw stars (fixed screen positions)
+    nightStars.forEach(s=>{
+      s.twinkle+=0.04;
+      const alpha=0.4+Math.sin(s.twinkle)*0.5;
+      ctx.fillStyle=`rgba(255,255,255,${alpha})`;
+      ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();
+    });
+    // Draw world street lights (glow orbs)
+    nightLights.forEach(l=>{
+      const sx=l.wx-camera.x,sy=l.wy-camera.y;
+      if(sx<-60||sx>canvas.width+60||sy<-60||sy>canvas.height+60) return;
+      const grd=ctx.createRadialGradient(sx,sy,0,sx,sy,55);
+      grd.addColorStop(0,l.col.replace(')',',0.35)').replace('rgb','rgba'));
+      grd.addColorStop(1,'rgba(0,0,0,0)');
+      // Parse hex color for rgba
+      const r2=parseInt(l.col.slice(1,3),16),g2=parseInt(l.col.slice(3,5),16),b2=parseInt(l.col.slice(5,7),16);
+      const grd2=ctx.createRadialGradient(sx,sy,0,sx,sy,55);
+      grd2.addColorStop(0,`rgba(${r2},${g2},${b2},0.4)`);
+      grd2.addColorStop(1,`rgba(${r2},${g2},${b2},0)`);
+      ctx.fillStyle=grd2;ctx.fillRect(sx-55,sy-55,110,110);
+      // Lamp post dot
+      ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(sx,sy,3,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=l.col;ctx.beginPath();ctx.arc(sx,sy,2,0,Math.PI*2);ctx.fill();
+    });
+    // Dark vignette
+    ctx.fillStyle='rgba(0,0,20,0.15)';ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  RENDER MAP
+// ══════════════════════════════════════════════════════════
+function renderMap(){
+  const W=Math.ceil(WORLD_SIZE/TILE);
+  const sx=Math.max(0,Math.floor(camera.x/TILE));
+  const sy=Math.max(0,Math.floor(camera.y/TILE));
+  const ex=Math.min(W,sx+Math.ceil(canvas.width/TILE)+2);
+  const ey=Math.min(W,sy+Math.ceil(canvas.height/TILE)+2);
+  const wt=WEATHER[currentWeather];
+  const isNight=currentWeather==='night';
+
+  for(let ty=sy;ty<ey;ty++) for(let tx=sx;tx<ex;tx++){
+    const tile=worldMap[ty]?worldMap[ty][tx]:0;
+    const wx2=tx*TILE-camera.x,wy2=ty*TILE-camera.y;
+    switch(tile){
+      case 0:
+        ctx.fillStyle=isNight?'#0a1a0a':currentWeather==='winter'?'#c8e0d0':currentWeather==='rainy'?'#2a5a22':'#3a7a2a';
+        ctx.fillRect(wx2,wy2,TILE,TILE);
+        if((tx+ty)%4===0&&!isNight){ctx.fillStyle=currentWeather==='winter'?'#aaccbb':'#2d6622';ctx.fillRect(wx2+6,wy2+6,3,3);}
+        break;
+      case 1:
+        ctx.fillStyle=isNight?'#1a1a2a':wt.road;ctx.fillRect(wx2,wy2,TILE,TILE);
+        ctx.fillStyle=isNight?'#2a2a3a':'#888899';ctx.fillRect(wx2,wy2,TILE,1);ctx.fillRect(wx2,wy2+TILE-1,TILE,1);
+        if(tx%4<2){ctx.fillStyle=isNight?'rgba(255,255,100,0.5)':'#ffff44';ctx.fillRect(wx2+8,wy2+TILE/2-1,22,2);}
+        ctx.fillStyle=isNight?'#222233':'#778888';ctx.fillRect(wx2,wy2,TILE,3);ctx.fillRect(wx2,wy2+TILE-3,TILE,3);
+        break;
+      case 2:
+        ctx.fillStyle=isNight?'#1a1a2a':wt.road;ctx.fillRect(wx2,wy2,TILE,TILE);
+        ctx.fillStyle=isNight?'#2a2a3a':'#888899';ctx.fillRect(wx2,wy2,1,TILE);ctx.fillRect(wx2+TILE-1,wy2,1,TILE);
+        if(ty%4<2){ctx.fillStyle=isNight?'rgba(255,255,100,0.5)':'#ffff44';ctx.fillRect(wx2+TILE/2-1,wy2+8,2,22);}
+        ctx.fillStyle=isNight?'#222233':'#778888';ctx.fillRect(wx2,wy2,3,TILE);ctx.fillRect(wx2+TILE-3,wy2,3,TILE);
+        break;
+      case 3:
+        ctx.fillStyle=isNight?'#151525':'#66677a';ctx.fillRect(wx2,wy2,TILE,TILE);
+        ctx.fillStyle='rgba(255,255,255,0.12)';ctx.fillRect(wx2+TILE/2-1,wy2,2,TILE);ctx.fillRect(wx2,wy2+TILE/2-1,TILE,2);
+        break;
+      case 4:
+        ctx.fillStyle=isNight?'#0a0a14':'#4a4a55';ctx.fillRect(wx2,wy2,TILE,TILE);
+        break;
+      case 5:
+        ctx.fillStyle=isNight?'#0a180a':currentWeather==='winter'?'#aaccaa':'#2a8a1a';ctx.fillRect(wx2,wy2,TILE,TILE);
+        if((tx+ty)%3===0&&!isNight){ctx.fillStyle='#1a6a0a';ctx.fillRect(wx2+10,wy2+10,2,6);ctx.fillRect(wx2+25,wy2+25,2,6);}
+        break;
+    }
+  }
+
+  // Buildings
+  buildings.forEach(b=>{
+    const bx=b.x-camera.x,by2=b.y-camera.y;
+    if(bx+b.w<0||bx>canvas.width||by2+b.h<0||by2>canvas.height) return;
+    if(isNight){
+      // Night glow effect around buildings
+      const grd=ctx.createRadialGradient(bx+b.w/2,by2+b.h/2,0,bx+b.w/2,by2+b.h/2,b.w*1.2);
+      const r2=parseInt(b.glowColor.slice(1,3),16),g2=parseInt(b.glowColor.slice(3,5),16),b3=parseInt(b.glowColor.slice(5,7),16);
+      grd.addColorStop(0,`rgba(${r2},${g2},${b3},0.25)`);
+      grd.addColorStop(1,`rgba(${r2},${g2},${b3},0)`);
+      ctx.fillStyle=grd;ctx.fillRect(bx-b.w,by2-b.h,b.w*3,b.h*3);
+      // Dark building body
+      ctx.fillStyle='rgba(0,0,0,0.35)';ctx.fillRect(bx+5,by2+5,b.w,b.h);
+      ctx.fillStyle='#0a0a18';ctx.fillRect(bx,by2,b.w,b.h);
+      // Neon roof trim
+      ctx.fillStyle=b.glowColor;ctx.fillRect(bx,by2,b.w,4);
+      ctx.shadowColor=b.glowColor;ctx.shadowBlur=12;
+      ctx.fillRect(bx,by2,b.w,4);
+      ctx.shadowBlur=0;
+      // Glowing windows
+      if(b.hasWindows&&b.w>22&&b.h>22){
+        for(let wy3=12;wy3<b.h-8;wy3+=14){
+          for(let wx3=6;wx3<b.w-6;wx3+=15){
+            if(Math.random()>0.3){
+              const winCols=['#ffff88','#88ffff','#ff88ff','#ffaa44','#88aaff'];
+              const wc=winCols[Math.floor(Math.random()*winCols.length)];
+              ctx.fillStyle=wc;
+              ctx.shadowColor=wc;ctx.shadowBlur=6;
+              ctx.fillRect(bx+wx3,by2+wy3,6,8);
+              ctx.shadowBlur=0;
+            }
+          }
+        }
+      }
+    } else {
+      const wallCol=currentWeather==='winter'?lighten(b.color,30):b.color;
+      ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(bx+5,by2+5,b.w,b.h);
+      ctx.fillStyle=wallCol;ctx.fillRect(bx,by2,b.w,b.h);
+      if(currentWeather==='winter'){ctx.fillStyle='#eef4ff';ctx.fillRect(bx,by2,b.w,7);}
+      else{ctx.fillStyle=b.roofColor;ctx.fillRect(bx,by2,b.w,7);}
+      if(b.hasWindows&&b.w>22&&b.h>22){
+        const winCol=currentWeather==='rainy'?'rgba(200,220,255,0.5)':'rgba(255,255,180,0.65)';
+        ctx.fillStyle=winCol;
+        for(let wy3=12;wy3<b.h-8;wy3+=13) for(let wx3=6;wx3<b.w-6;wx3+=14){if(Math.random()>0.25) ctx.fillRect(bx+wx3,by2+wy3,6,8);}
+      }
+    }
+    ctx.fillStyle=isNight?'#0a0a18':'#332211';ctx.fillRect(bx+b.w/2-5,by2+b.h-10,10,10);
+  });
+
+  // Parks - trees
+  parkAreas.forEach(p=>{
+    const px=p.x-camera.x,py2=p.y-camera.y;
+    if(px+p.w<0||px>canvas.width||py2+p.h<0||py2>canvas.height) return;
+    const treeCol=isNight?'#0a280a':currentWeather==='winter'?'#6a9a6a':'#1a6a0a';
+    const treeHL=isNight?'#0d360d':currentWeather==='winter'?'#8abb8a':'#2a8a1a';
+    [[px+18,py2+18],[px+p.w-18,py2+18],[px+p.w/2,py2+p.h-18],[px+18,py2+p.h-18],[px+p.w-18,py2+p.h-18]].forEach(([tx2,ty2])=>{
+      ctx.fillStyle=treeCol;ctx.beginPath();ctx.arc(tx2,ty2,11,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=treeHL;ctx.beginPath();ctx.arc(tx2-2,ty2-2,8,0,Math.PI*2);ctx.fill();
+    });
+  });
+
+  const wta=WEATHER[currentWeather].ambient;
+  if(wta){ctx.fillStyle=wta;ctx.fillRect(0,0,canvas.width,canvas.height);}
+}
+
+// ══════════════════════════════════════════════════════════
+//  DRAW CAR
+// ══════════════════════════════════════════════════════════
+function drawCar(car){
+  const x=car.x-camera.x,y=car.y-camera.y;
+  if(x+40<0||x-40>canvas.width||y+30<0||y-30>canvas.height) return;
+  const isNight=currentWeather==='night';
+  ctx.save();ctx.translate(x,y);ctx.rotate(car.angle);
+  ctx.fillStyle='rgba(0,0,0,0.35)';ctx.fillRect(-car.w/2+4,-car.h/2+4,car.w,car.h);
+  const carBody=car.isPolice?'#1a44dd':(car.isSuperCar?'#cc0044':car.color);
+  ctx.fillStyle=carBody;ctx.fillRect(-car.w/2,-car.h/2,car.w,car.h);
+  ctx.fillStyle=car.isPolice?'#2255ff':(car.isSuperCar?'#ff0055':car.roofColor);ctx.fillRect(-car.w/2+4,-car.h/2+3,car.w-8,car.h-6);
+  ctx.fillStyle='rgba(180,220,255,0.75)';ctx.fillRect(-car.w/2+5,-car.h/2+4,car.w-18,5);
+  ctx.fillStyle='#1a1a1a';
+  [[-car.w/2+1,-car.h/2],[car.w/2-5,-car.h/2],[-car.w/2+1,car.h/2-4],[car.w/2-5,car.h/2-4]].forEach(([wx,wy])=>ctx.fillRect(wx,wy,4,4));
+  // Headlights (glow in night)
+  if(isNight){ctx.shadowColor='#ffffaa';ctx.shadowBlur=14;}
+  ctx.fillStyle='#ffffaa';ctx.fillRect(car.w/2-3,-car.h/2+2,3,4);ctx.fillRect(car.w/2-3,car.h/2-6,3,4);
+  if(isNight) ctx.shadowBlur=0;
+  ctx.fillStyle='#ff2200';ctx.fillRect(-car.w/2,-car.h/2+1,3,4);ctx.fillRect(-car.w/2,car.h/2-5,3,4);
+  if(car.isPolice){
+    ctx.fillStyle='#fff';ctx.fillRect(-6,-car.h/2,12,4);
+    const f=Math.floor(frameCount/10)%2;
+    ctx.fillStyle=f?'#ff0000':'#0000ff';ctx.fillRect(-6,-car.h/2+1,5,2);
+    ctx.fillStyle=f?'#0000ff':'#ff0000';ctx.fillRect(1,-car.h/2+1,5,2);
+    if(isNight){ctx.shadowColor=f?'#ff0000':'#0000ff';ctx.shadowBlur=18;ctx.fillRect(-6,-car.h/2+1,5,2);ctx.shadowBlur=0;}
+  }
+  if(car.isSuperCar){ctx.fillStyle='#ff00aa';ctx.fillRect(-car.w/2+2,-car.h/2,car.w-4,3);}
+  if(currentWeather==='winter'){ctx.fillStyle='rgba(200,230,255,0.18)';ctx.fillRect(-car.w/2,-car.h/2,car.w,car.h);}
+  ctx.restore();
+}
+
+// ══════════════════════════════════════════════════════════
+//  DRAW PED
+// ══════════════════════════════════════════════════════════
+function drawPed(ped,isPolice){
+  const x=ped.x-camera.x,y=ped.y-camera.y;
+  if(x<-35||x>canvas.width+35||y<-35||y>canvas.height+35) return;
+  const isNight=currentWeather==='night';
+  if(ped.dead){
+    ctx.save();ctx.translate(x,y);ctx.rotate(ped.angle+1.57);
+    ctx.fillStyle='#771111';ctx.fillRect(-10,-4,20,8);
+    ctx.fillStyle='#cc5544';ctx.beginPath();ctx.arc(10,0,5,0,Math.PI*2);ctx.fill();
+    ctx.restore();return;
+  }
+  ctx.save();ctx.translate(x,y);ctx.rotate(ped.angle);
+  const bodyCol=isPolice?'#1a44cc':(ped.gangster?'#550000':'#447744');
+  const shirtCol=isPolice?'#2255dd':(ped.gangster?'#772222':'#559955');
+  ctx.fillStyle=bodyCol;ctx.fillRect(-5,-8,10,18);
+  ctx.fillStyle=shirtCol;ctx.fillRect(-4,-7,8,10);
+  ctx.fillStyle=ped.color;ctx.beginPath();ctx.arc(0,-12,7,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=ped.gangster?'#220000':'#222222';ctx.beginPath();ctx.arc(0,-16,5,Math.PI,0);ctx.fill();
+  ctx.fillStyle='#fff';ctx.fillRect(-4,-14,2,2);ctx.fillRect(2,-14,2,2);
+  ctx.fillStyle='#000';ctx.fillRect(-3,-13,1,1);ctx.fillRect(3,-13,1,1);
+  ctx.fillStyle=bodyCol;ctx.fillRect(-9,-6,4,12);ctx.fillRect(5,-6,4,12);
+  const pantCol=isPolice?'#112244':'#223344';
+  ctx.fillStyle=pantCol;ctx.fillRect(-4,10,4,9);ctx.fillRect(0,10,4,9);
+  if(isPolice){ctx.fillStyle='#ffd700';ctx.beginPath();ctx.arc(0,-2,3,0,Math.PI*2);ctx.fill();}
+  if(ped.gangster){ctx.fillStyle='#ff3333';ctx.fillRect(-2,-4,4,2);}
+  ctx.restore();
+  ctx.save();ctx.translate(x,y);
+  ctx.fillStyle=ped.gangster?'#ff8855':(isPolice?'#88aaff':'#ccffcc');
+  if(isNight&&(ped.gangster||isPolice)){ctx.shadowColor=ped.gangster?'#ff4400':'#4488ff';ctx.shadowBlur=8;}
+  ctx.font='bold 8px Rajdhani,Arial';ctx.textAlign='center';
+  ctx.fillText(ped.name||(isPolice?'POLICE':'CIV'),0,-26);
+  ctx.shadowBlur=0;
+  ctx.restore();
+  if(!ped.dead&&(ped.gangster||isPolice)&&ped.hp<ped.maxHp){
+    const bw=28,bh=4,bx2=x-bw/2,by2=y-32;
+    ctx.fillStyle='#333';ctx.fillRect(bx2,by2,bw,bh);
+    ctx.fillStyle='#00ff44';ctx.fillRect(bx2,by2,bw*(ped.hp/ped.maxHp),bh);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  DRAW PLAYER
+// ══════════════════════════════════════════════════════════
+function drawPlayer(){
+  if(player.inCar){drawCar(player.car);return;}
+  const x=player.x-camera.x,y=player.y-camera.y;
+  const isNight=currentWeather==='night';
+  ctx.save();ctx.translate(x,y);ctx.rotate(player.angle);
+  ctx.fillStyle='rgba(0,0,0,0.3)';ctx.beginPath();ctx.ellipse(0,15,10,4,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#1a44cc';ctx.fillRect(-6,-8,12,18);
+  ctx.fillStyle='#2255dd';ctx.fillRect(-5,-7,10,10);
+  ctx.fillStyle='#ffaa88';ctx.beginPath();ctx.arc(0,-12,8,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#112288';ctx.fillRect(-8,-18,16,8);ctx.beginPath();ctx.arc(0,-18,8,Math.PI,0);ctx.fill();
+  ctx.fillStyle='#0a1a66';ctx.fillRect(-10,-12,20,3);
+  ctx.fillStyle='#fff';ctx.fillRect(-5,-15,3,2);ctx.fillRect(2,-15,3,2);
+  ctx.fillStyle='#000';ctx.fillRect(-4,-14,2,2);ctx.fillRect(3,-14,2,2);
+  ctx.fillStyle='#1a44cc';ctx.fillRect(-10,-6,4,12);ctx.fillRect(6,-6,4,12);
+  if(currentWeapon>0){
+    const w=weapons[currentWeapon];
+    if(w.name==='AK-47'){ctx.fillStyle='#554422';ctx.fillRect(7,-3,18,5);ctx.fillStyle='#332211';ctx.fillRect(9,2,14,3);}
+    else if(w.name==='SMG'){ctx.fillStyle='#555';ctx.fillRect(7,-2,14,4);}
+    else if(w.name==='SNIPER'){ctx.fillStyle='#223322';ctx.fillRect(7,-3,24,4);ctx.fillStyle='#334433';ctx.fillRect(20,-6,4,3);}
+    else if(w.name==='RPG'){ctx.fillStyle='#336633';ctx.fillRect(7,-5,22,7);}
+    else if(w.name==='GRENADE'){ctx.fillStyle='#446644';ctx.beginPath();ctx.arc(14,-1,6,0,Math.PI*2);ctx.fill();}
+  }
+  ctx.fillStyle='#112244';ctx.fillRect(-5,10,4,10);ctx.fillRect(1,10,4,10);
+  ctx.restore();
+  ctx.save();ctx.translate(x,y);
+  if(isNight){ctx.shadowColor='#00ffcc';ctx.shadowBlur=18;}
+  ctx.strokeStyle='rgba(0,255,200,0.6)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(0,0,22,0,Math.PI*2);ctx.stroke();
+  ctx.shadowBlur=0;
+  ctx.restore();
+  const cx2=player.x-camera.x+Math.cos(player.angle)*65;
+  const cy2=player.y-camera.y+Math.sin(player.angle)*65;
+  ctx.strokeStyle='rgba(255,60,60,0.8)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(cx2-10,cy2);ctx.lineTo(cx2+10,cy2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx2,cy2-10);ctx.lineTo(cx2,cy2+10);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx2,cy2,10,0,Math.PI*2);ctx.stroke();
+  // Player name above
+  const isNight2=currentWeather==='night';
+  ctx.save();ctx.translate(x,y);
+  if(isNight2){ctx.shadowColor='#ffd700';ctx.shadowBlur=10;}
+  ctx.fillStyle='#ffd700';ctx.font='bold 9px Rajdhani,Arial';ctx.textAlign='center';
+  ctx.fillText(chosenChar.name,0,-32);
+  ctx.shadowBlur=0;ctx.restore();
+}
+
+// ══════════════════════════════════════════════════════════
+//  UPDATE FUNCTIONS
+// ══════════════════════════════════════════════════════════
+function updatePlayer(){
+  let mx=joystick.dx,my=joystick.dy;
+  if(keys['ArrowLeft']||keys['a']) mx=-1;
+  if(keys['ArrowRight']||keys['d']) mx=1;
+  if(keys['ArrowUp']||keys['w']) my=-1;
+  if(keys['ArrowDown']||keys['s']) my=1;
+  if((keys[' ']||keys['Enter'])&&fireCooldown<=0) handleShoot();
+  if(keys['e']) handleEnterCar();
+  if(keys['r']) handleRob();
+  if(keys['q']) cycleWeapon();
+
+  const spd=ownedUpgrades.speed?(player.speed*1.3):player.speed;
+
+  if(player.inCar){
+    const car=player.car;
+    if(mx!==0||my!==0){
+      const len=Math.sqrt(mx*mx+my*my);
+      const ta=Math.atan2(my/len,mx/len);
+      let da=ta-car.angle;
+      while(da>Math.PI) da-=Math.PI*2;while(da<-Math.PI) da+=Math.PI*2;
+      car.angle+=da*0.1;
+      car.speed=Math.min(car.maxSpeed,car.speed+0.28);
+    } else {car.speed*=0.88;if(car.speed<0.05) car.speed=0;}
+    const nx2t=Math.cos(car.angle)*car.speed,ny2t=Math.sin(car.angle)*car.speed;
+    let nx2=car.x+nx2t,ny2=car.y+ny2t;
+    if(!collidesBuilding(nx2,ny2,17)){[nx2,ny2]=clamp(nx2,ny2);car.x=nx2;car.y=ny2;}
+    else car.speed=0;
+    player.x=car.x;player.y=car.y;player.angle=car.angle;
+  } else {
+    if(mx!==0||my!==0){
+      const len=Math.sqrt(mx*mx+my*my);
+      const nx=mx/len,ny=my/len;
+      player.angle=Math.atan2(ny,nx);
+      let newX=player.x+nx*spd,newY=player.y+ny*spd;
+      if(!collidesBuilding(newX,player.y,player.size)) player.x=newX;
+      else{let pushed=false;for(let off=1;off<=14;off+=2){if(!collidesBuilding(player.x+nx*spd,player.y+off,player.size)){player.y+=off;pushed=true;break;}if(!collidesBuilding(player.x+nx*spd,player.y-off,player.size)){player.y-=off;pushed=true;break;}}if(pushed)player.x=newX;}
+      if(!collidesBuilding(player.x,newY,player.size)) player.y=newY;
+      else{let pushed=false;for(let off=1;off<=14;off+=2){if(!collidesBuilding(player.x+off,player.y+ny*spd,player.size)){player.x+=off;pushed=true;break;}if(!collidesBuilding(player.x-off,player.y+ny*spd,player.size)){player.x-=off;pushed=true;break;}}if(pushed)player.y=newY;}
+      [player.x,player.y]=clamp(player.x,player.y);
+    }
+  }
+  if(fireCooldown>0) fireCooldown--;
+}
+
+function updatePeds(){
+  pedestrians.forEach(ped=>{
+    if(ped.dead) return;
+    const dx=player.x-ped.x,dy=player.y-ped.y;
+    const d=Math.sqrt(dx*dx+dy*dy);
+    if(ped.fleeing){
+      ped.fleeTimer--;if(ped.fleeTimer<=0) ped.fleeing=false;
+      ped.angle=Math.atan2(-dy,-dx);
+      let nx=ped.x+Math.cos(ped.angle)*ped.speed,ny=ped.y+Math.sin(ped.angle)*ped.speed;
+      if(!collidesBuilding(nx,ny,10)){ped.x=nx;ped.y=ny;}
+      else ped.angle+=0.4;
+    } else if(ped.hostile){
+      if(d<400){
+        ped.angle=Math.atan2(dy,dx);
+        let nx=ped.x+Math.cos(ped.angle)*ped.speed*1.2,ny=ped.y+Math.sin(ped.angle)*ped.speed*1.2;
+        if(!collidesBuilding(nx,ny,10)){ped.x=nx;ped.y=ny;}
+        if(d<36&&ped.attackTimer<=0){damagePlayer(10);ped.attackTimer=70;showMessage('GOT HIT!');}
+      }
+    } else {
+      ped.moveTimer--;
+      if(ped.moveTimer<=0){ped.angle+=(Math.random()-0.5)*1.8;ped.moveTimer=60+Math.random()*120;}
+      let nx=ped.x+Math.cos(ped.angle)*ped.speed*0.5,ny=ped.y+Math.sin(ped.angle)*ped.speed*0.5;
+      if(!collidesBuilding(nx,ny,10)){ped.x=nx;ped.y=ny;}else ped.angle+=0.6;
+      if(d<70&&!ped.hostile&&wantedLevel>=3){ped.fleeing=true;ped.fleeTimer=200;}
+    }
+    if(ped.attackTimer>0) ped.attackTimer--;
+    ped.x=Math.max(20,Math.min(WORLD_SIZE-20,ped.x));
+    ped.y=Math.max(20,Math.min(WORLD_SIZE-20,ped.y));
+  });
+}
+
+function updatePolice(){
+  // Auto-remove police after 15s when no crime
+  policeUnits.forEach(cop=>{if(!cop.dead&&frameCount-cop.spawnTime>900&&wantedLevel<=0){cop.dead=true;}});
+  policeUnits=policeUnits.filter(c=>!c.dead);
+  policeUnits.forEach(cop=>{
+    if(cop.dead) return;
+    const dx=player.x-cop.x,dy=player.y-cop.y;
+    const d=Math.sqrt(dx*dx+dy*dy);
+    if(wantedLevel>0&&cop.chasing){
+      cop.angle=Math.atan2(dy,dx);
+      let nx=cop.x+Math.cos(cop.angle)*cop.speed,ny=cop.y+Math.sin(cop.angle)*cop.speed;
+      if(!collidesBuilding(nx,ny,12)){cop.x=nx;cop.y=ny;}
+      else{cop.angle+=(Math.random()-0.5)*1.0;} // navigate around buildings
+      [cop.x,cop.y]=clamp(cop.x,cop.y);
+      if(d<220&&cop.attackTimer<=0&&wantedLevel>=2){
+        fireBullet(cop.x,cop.y,cop.angle+(Math.random()-0.5)*0.25,10,7,false,false);
+        cop.attackTimer=55;
+      }
+      if(d<36&&cop.attackTimer<=0){damagePlayer(8);cop.attackTimer=60;}
+    }
+    if(cop.attackTimer>0) cop.attackTimer--;
+  });
+}
+
+function updateBullets(){
+  bullets=bullets.filter(b=>b.life>0);
+  bullets.forEach(b=>{
+    b.trail.push({x:b.x,y:b.y});if(b.trail.length>7) b.trail.shift();
+    if(b.grenade){
+      b.x+=Math.cos(b.angle)*b.speed;b.y+=Math.sin(b.angle)*b.speed;b.speed*=0.94;b.fuseTimer--;
+      if(b.fuseTimer<=0){
+        createExplosion(b.x,b.y,'fire');
+        const er=160;
+        [...pedestrians,...policeUnits].forEach(e=>{if(e.dead)return;const d=dist(b.x,b.y,e.x,e.y);if(d<er){e.hp-=Math.floor(110*(1-d/er));if(e.hp<=0)killEntity(e,b.fromPlayer);}});
+        if(dist(b.x,b.y,player.x,player.y)<er) damagePlayer(25);
+        b.life=0;if(b.fromPlayer) registerCrime(1);return;
+      }
+      b.life--;return;
+    }
+    b.x+=Math.cos(b.angle)*b.speed;b.y+=Math.sin(b.angle)*b.speed;b.life--;
+    if(collidesBuilding(b.x,b.y,3)){if(b.explosive)createExplosion(b.x,b.y,'fire');b.life=0;return;}
+    if(b.x<0||b.x>WORLD_SIZE||b.y<0||b.y>WORLD_SIZE){b.life=0;return;}
+    if(b.fromPlayer){
+      pedestrians.forEach(p=>{if(p.dead||b.life<=0)return;if(dist(b.x,b.y,p.x,p.y)<15){p.hp-=b.damage;p.hostile=true;if(p.hp<=0)killEntity(p,true);b.life=0;registerCrime(1);}});
+      policeUnits.forEach(c=>{if(c.dead||b.life<=0)return;if(dist(b.x,b.y,c.x,c.y)<14){c.hp-=b.damage;if(c.hp<=0){c.dead=true;createExplosion(c.x,c.y,'blood');killCount++;document.getElementById('kills').textContent=killCount;}b.life=0;registerCrime(2);}});
+    } else {
+      if(dist(b.x,b.y,player.x,player.y)<(player.inCar?22:15)){damagePlayer(b.damage);b.life=0;}
+    }
+  });
+}
+
+function updateExplosions(){explosions=explosions.filter(e=>e.life>0);explosions.forEach(e=>{e.x+=e.vx;e.y+=e.vy;e.vx*=0.9;e.vy*=0.9;e.life--;e.size*=0.96;});}
+
+// ══════════════════════════════════════════════════════════
+//  DRAW BULLETS & EXPLOSIONS
+// ══════════════════════════════════════════════════════════
+function drawBullets(){
+  bullets.forEach(b=>{
+    b.trail.forEach((t,i)=>{ctx.globalAlpha=(i/b.trail.length)*0.45;ctx.fillStyle=b.grenade?'#44ff44':(b.fromPlayer?'#ffcc44':'#ff5544');ctx.beginPath();ctx.arc(t.x-camera.x,t.y-camera.y,b.grenade?5:2,0,Math.PI*2);ctx.fill();});
+    ctx.globalAlpha=1;
+    ctx.fillStyle=b.grenade?'#44ff44':(b.fromPlayer?'#ffee00':'#ff6644');
+    ctx.beginPath();ctx.arc(b.x-camera.x,b.y-camera.y,b.grenade?7:3.5,0,Math.PI*2);ctx.fill();
+    if(!b.grenade){ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(b.x-camera.x,b.y-camera.y,1.5,0,Math.PI*2);ctx.fill();}
+    if(b.grenade&&frameCount%4<2){ctx.fillStyle='#ff8800';ctx.beginPath();ctx.arc(b.x-camera.x,b.y-camera.y,3,0,Math.PI*2);ctx.fill();}
+  });
+}
+
+function drawExplosions(){
+  explosions.forEach(e=>{const ex=e.x-camera.x,ey=e.y-camera.y;ctx.globalAlpha=e.life/50;ctx.fillStyle=e.color;ctx.beginPath();ctx.arc(ex,ey,e.size,0,Math.PI*2);ctx.fill();});
+  ctx.globalAlpha=1;
+}
+
+// ══════════════════════════════════════════════════════════
+//  MINIMAP
+// ══════════════════════════════════════════════════════════
+function drawMinimap(){
+  const mw=110,mh=110,mx2=canvas.width-mw-10,my2=72;
+  const scale=mw/WORLD_SIZE;
+  ctx.fillStyle='rgba(0,0,0,0.68)';ctx.fillRect(mx2,my2,mw,mh);
+  ctx.strokeStyle='rgba(0,255,200,0.4)';ctx.lineWidth=1;ctx.strokeRect(mx2,my2,mw,mh);
+  ctx.fillStyle='rgba(80,80,100,0.5)';
+  const W=Math.ceil(WORLD_SIZE/TILE);
+  for(let ty=0;ty<W;ty++) for(let tx=0;tx<W;tx++){
+    const t=worldMap[ty]?worldMap[ty][tx]:0;
+    if(t===1||t===2||t===3){ctx.fillRect(mx2+tx*TILE*scale,my2+ty*TILE*scale,TILE*scale,TILE*scale);}
+  }
+  if(currentWeather==='night'){
+    ctx.fillStyle='rgba(255,180,50,0.6)';
+    cars.forEach(c=>ctx.fillRect(mx2+c.x*scale-1,my2+c.y*scale-1,2,2));
+  }
+  ctx.fillStyle='#ff4444';
+  pedestrians.filter(p=>!p.dead).forEach(p=>ctx.fillRect(mx2+p.x*scale-1.5,my2+p.y*scale-1.5,3,3));
+  ctx.fillStyle='#00ffcc';ctx.beginPath();ctx.arc(mx2+player.x*scale,my2+player.y*scale,3,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#4488ff';
+  policeUnits.filter(c=>!c.dead).forEach(c=>ctx.fillRect(mx2+c.x*scale-1.5,my2+c.y*scale-1.5,3,3));
+}
+
+// ══════════════════════════════════════════════════════════
+//  GAME LOOP
+// ══════════════════════════════════════════════════════════
+function gameLoop(){
+  if(!gameRunning) return;
+  frameCount++;
+
+  camera.x+=(player.x-canvas.width/2-camera.x)*CAM_LERP;
+  camera.y+=(player.y-canvas.height/2-camera.y)*CAM_LERP;
+  camera.x=Math.max(0,Math.min(WORLD_SIZE-canvas.width,camera.x));
+  camera.y=Math.max(0,Math.min(WORLD_SIZE-canvas.height,camera.y));
+
+  ctx.fillStyle=WEATHER[currentWeather].sky;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  renderMap();
+  cars.forEach(c=>{if(!c.occupied||c!==player.car) drawCar(c);});
+  pedestrians.forEach(p=>drawPed(p,false));
+  policeUnits.forEach(c=>drawPed(c,true));
+  drawPlayer();
+  drawBullets();
+  drawExplosions();
+  drawWeatherFX();
+  drawMinimap();
+
+  updatePlayer();
+  updatePeds();
+  updatePolice();
+  updateBullets();
+  updateExplosions();
+  updateWantedDecay();
+  updateHealthRegen();
+
+  requestAnimationFrame(gameLoop);
+}
+
+// ══════════════════════════════════════════════════════════
+//  SHOP SYSTEM
+// ══════════════════════════════════════════════════════════
+function openShop(){
+  if(!gameRunning) return;
+  shopOpen=true;
+  document.getElementById('shop-cash').textContent=cash;
+  renderShop();
+  document.getElementById('shop').style.display='flex';
+}
+
+function closeShop(){
+  shopOpen=false;
+  document.getElementById('shop').style.display='none';
+}
+
+function renderShop(){
+  document.getElementById('shop-cash').textContent=cash;
+  const weap=document.getElementById('shop-weapons-grid');
+  const heal=document.getElementById('shop-health-grid');
+  const upgr=document.getElementById('shop-upgrades-grid');
+  weap.innerHTML='';heal.innerHTML='';upgr.innerHTML='';
+
+  SHOP_ITEMS.forEach(item=>{
+    const owned=saveData.ownedItems.includes(item.id)&&(item.type==='upgrade');
+    const cantAfford=cash<item.price&&!owned;
+    const div=document.createElement('div');
+    div.className='shop-item'+(owned?' owned':cantAfford?' cant-afford':'');
+    div.innerHTML=`<div class="s-icon">${item.icon}</div><div class="s-name">${item.name}</div><div class="s-desc">${item.desc}</div><div class="s-price">${owned?'✓ OWNED':'$'+item.price}</div>`;
+    if(!owned) div.onclick=()=>buyItem(item);
+    if(item.type==='weapon'||item.type==='ammo') weap.appendChild(div);
+    else if(item.type==='health') heal.appendChild(div);
+    else upgr.appendChild(div);
+  });
+}
+
+function buyItem(item){
+  if(cash<item.price){showMessage('NOT ENOUGH CASH!');return;}
+  cash-=item.price;
+  document.getElementById('cash').textContent=cash;
+  saveData.totalItemsBought++;
+  if(cash>saveData.mostCash) saveData.mostCash=cash;
+  writeSave();
+
+  if(item.type==='weapon'){
+    weapons[item.weaponIdx].ammo=WEAPON_DEFS[item.weaponIdx].ammo;
+    showMessage('GOT '+item.name+'!');
+  } else if(item.type==='ammo'){
+    if(item.id==='grenade') weapons[5].ammo=Math.min(weapons[5].ammo+3,20);
+    else if(item.id==='ak47ammo') weapons[1].ammo=Math.min(weapons[1].ammo+60,300);
+    else if(item.id==='rpgammo') weapons[4].ammo=Math.min(weapons[4].ammo+3,15);
+    else if(item.id==='sniperammo') weapons[3].ammo=Math.min(weapons[3].ammo+10,60);
+    showMessage('+AMMO ADDED!');
+    updateWeaponHUD();
+  } else if(item.type==='health'){
+    player.hp=Math.min(player.maxHp,player.hp+item.hpAmt);
+    updateHP();showMessage('+'+item.hpAmt+' HP!');
+  } else if(item.type==='upgrade'){
+    if(!saveData.ownedItems.includes(item.id)) saveData.ownedItems.push(item.id);
+    writeSave();
+    if(item.upg==='armor'){player.maxHp=130;if(player.hp>100)player.hp=130;updateHP();ownedUpgrades.armor=true;}
+    if(item.upg==='speed') ownedUpgrades.speed=true;
+    showMessage(item.name+' EQUIPPED!');
+  } else if(item.type==='special'){
+    if(item.special==='spawncar'){
+      const a=player.angle+Math.PI/2;
+      const sx=player.x+Math.cos(a)*80,sy=player.y+Math.sin(a)*80;
+      cars.push({x:sx,y:sy,angle:player.angle,color:'#cc0044',roofColor:'#ff0055',w:34,h:20,occupied:false,isPolice:false,speed:0,maxSpeed:6.5,id:cars.length,isSuperCar:true});
+      showMessage('🏎️ SUPER CAR SPAWNED!');
+    }
+    if(item.special==='clearwanted'){wantedLevel=0;updateWantedStars();crimeCount=0;wantedStarDecayTimer=0;showMessage('⭐ WANTED CLEARED!');}
+  }
+  renderShop();
+}
+
+// ══════════════════════════════════════════════════════════
+//  INIT GAME
+// ══════════════════════════════════════════════════════════
+function initGame(){
+  gameRunning=false;shopOpen=false;
+  wantedLevel=0;policeSearchActive=false;crimeCount=0;wantedStarDecayTimer=0;
+  pedDeathCount=0;cash=0;killCount=0;frameCount=0;fireCooldown=0;
+  lastHealthDamageTime=0;healthRegenTimer=0;
+  weapons=WEAPON_DEFS.map(w=>({...w,ammo:w.ammo===Infinity?Infinity:w.ammo}));
+  currentWeapon=0;
+
+  // Apply saved upgrades
+  ownedUpgrades={};
+  if(saveData.ownedItems.includes('armor')){ownedUpgrades.armor=true;player={x:1000,y:1000,angle:0,speed:2.4,hp:130,maxHp:130,inCar:false,car:null,size:13};}
+  else player={x:1000,y:1000,angle:0,speed:2.4,hp:100,maxHp:100,inCar:false,car:null,size:13};
+  if(saveData.ownedItems.includes('speed')) ownedUpgrades.speed=true;
+
+  bullets=[];explosions=[];policeUnits=[];
+
+  document.getElementById('cash').textContent='0';
+  document.getElementById('kills').textContent='0';
+  document.getElementById('hp-text').textContent=player.maxHp;
+  document.getElementById('health-fill').style.width='100%';
+  document.getElementById('health-fill').style.background='linear-gradient(90deg,#00ff44,#88ff00)';
+  document.getElementById('player-name').textContent='⚡ '+chosenChar.name;
+  document.getElementById('weather-indicator').textContent=WEATHER[currentWeather].label;
+  updateWantedStars();updateWeaponHUD();
+
+  generateWorld();
+  // Find safe start position
+  const safeStart=findSafeSpawn();
+  player.x=safeStart.x;player.y=safeStart.y;
+  camera.x=player.x-canvas.width/2;camera.y=player.y-canvas.height/2;
+
+  spawnCars();spawnPeds();initWeatherParticles();
+
+  if(!musicPlaying) startMusic();
+
+  // Show best stats briefly
+  updateBestStatsDisplay();
+
+  gameRunning=true;
+  requestAnimationFrame(gameLoop);
+}
+
+function updateBestStatsDisplay(){
+  document.getElementById('best-kills').textContent=saveData.highestKills;
+  document.getElementById('best-cash').textContent='$'+saveData.mostCash;
+  document.getElementById('best-items').textContent=saveData.totalItemsBought;
+  const sp=document.getElementById('stats-panel');
+  sp.classList.add('show');
+  setTimeout(()=>sp.classList.remove('show'),3500);
+}
+
+// ══════════════════════════════════════════════════════════
+//  NAME INPUT & CHARACTER SELECTION
+// ══════════════════════════════════════════════════════════
+function confirmNames(){
+  const n1=document.getElementById('p1-name').value.trim().toUpperCase()||'PLAYER 1';
+  const n2=document.getElementById('p2-name').value.trim().toUpperCase()||'PLAYER 2';
+  const n3=document.getElementById('p3-name').value.trim().toUpperCase()||'PLAYER 3';
+  const n4=document.getElementById('p4-name').value.trim().toUpperCase()||'PLAYER 4';
+  playerNames=[n1,n2,n3,n4];
+  saveData.playerNames=playerNames;
+  writeSave();
+  // Update intro cards display
+  document.getElementById('cc1n').textContent=n1;
+  document.getElementById('cc2n').textContent=n2;
+  document.getElementById('cc3n').textContent=n3;
+  document.getElementById('cc4n').textContent=n4;
+  document.getElementById('name-input-screen').style.display='none';
+  buildCharSelect();
+  document.getElementById('char-select').style.display='flex';
+}
+
+function buildCharSelect(){
+  const grid=document.getElementById('char-grid-container');
+  grid.innerHTML='';
+  const emojis=['😈','🔥','💀','⚡'];
+  const descs=['The Silent Killer','Street Enforcer','The Ghost','Thunder Fist'];
+  playerNames.forEach((name,i)=>{
+    const div=document.createElement('div');
+    div.className='char-option';
+    div.innerHTML=`<div class="avatar">${emojis[i]}</div><div class="name">${name}</div><div class="desc">${descs[i]}</div>`;
+    div.onclick=()=>selectChar(name,emojis[i],descs[i]);
+    grid.appendChild(div);
+  });
+}
+
+function selectChar(name,avatar,desc){
+  chosenChar={name,avatar};
+  document.getElementById('char-select').style.display='none';
+  document.getElementById('weather-select').style.display='flex';
+}
+
+function selectWeather(w){
+  currentWeather=w;
+  document.getElementById('weather-select').style.display='none';
+  document.getElementById('shop').style.display='none';
+  initGame();
+}
+
+// ══════════════════════════════════════════════════════════
+//  INTRO SEQUENCE — CINEMATIC NIGHT CITY
+// ══════════════════════════════════════════════════════════
+function drawIntroCity(){
+  const sc=document.getElementById('intro-cityscape');
+  const sctx=sc.getContext('2d');
+  sc.width=window.innerWidth;sc.height=sc.offsetHeight;
+  const w=sc.width,h=sc.height;
+  // Gradient sky-ground for intro
+  const sky=sctx.createLinearGradient(0,0,0,h);
+  sky.addColorStop(0,'#0a0020');sky.addColorStop(1,'#1a0510');
+  sctx.fillStyle=sky;sctx.fillRect(0,0,w,h);
+  // Draw silhouette buildings
+  const buildings2=[];
+  for(let i=0;i<30;i++) buildings2.push({x:Math.random()*w,w:30+Math.random()*80,h:80+Math.random()*180});
+  buildings2.sort((a,b)=>a.h-b.h);
+  buildings2.forEach((b,i)=>{
+    const shade=30+i*3;
+    sctx.fillStyle=`rgb(${shade},${shade-5},${shade+5})`;
+    sctx.fillRect(b.x-b.w/2,h-b.h,b.w,b.h);
+    // Windows glowing
+    for(let wy=10;wy<b.h-10;wy+=15){
+      for(let wx=6;wx<b.w-6;wx+=12){
+        if(Math.random()>0.4){
+          const cols=['#ffff88','#88ffff','#ff88aa','#ffaa44'];
+          sctx.fillStyle=cols[Math.floor(Math.random()*cols.length)];
+          sctx.fillRect(b.x-b.w/2+wx,h-b.h+wy,5,7);
+        }
+      }
+    }
+    // Neon roof glow
+    const neons=['#ff00aa','#00ffaa','#ff6600','#00aaff'];
+    const nc=neons[i%neons.length];
+    sctx.fillStyle=nc;sctx.fillRect(b.x-b.w/2,h-b.h,b.w,3);
+  });
+  // Ground glow
+  const grd=sctx.createLinearGradient(0,h-20,0,h);
+  grd.addColorStop(0,'rgba(80,0,160,0.4)');grd.addColorStop(1,'rgba(0,0,0,0)');
+  sctx.fillStyle=grd;sctx.fillRect(0,h-20,w,20);
+}
+
+function drawIntroStars(){
+  const sc=document.getElementById('intro-stars');
+  const sctx=sc.getContext('2d');
+  sc.width=window.innerWidth;sc.height=window.innerHeight;
+  for(let i=0;i<180;i++){
+    const x=Math.random()*sc.width,y=Math.random()*sc.height*0.55;
+    const r=0.5+Math.random()*1.5;
+    const a=0.4+Math.random()*0.6;
+    sctx.fillStyle=`rgba(255,255,255,${a})`;
+    sctx.beginPath();sctx.arc(x,y,r,0,Math.PI*2);sctx.fill();
+  }
+}
+
+function runIntro(){
+  // Load saved names
+  if(saveData.playerNames&&saveData.playerNames.length===4){
+    playerNames=saveData.playerNames;
+    document.getElementById('p1-name').value=playerNames[0]==='PLAYER 1'?'':playerNames[0];
+    document.getElementById('p2-name').value=playerNames[1]==='PLAYER 2'?'':playerNames[1];
+    document.getElementById('p3-name').value=playerNames[2]==='PLAYER 3'?'':playerNames[2];
+    document.getElementById('p4-name').value=playerNames[3]==='PLAYER 4'?'':playerNames[3];
+    document.getElementById('cc1n').textContent=playerNames[0];
+    document.getElementById('cc2n').textContent=playerNames[1];
+    document.getElementById('cc3n').textContent=playerNames[2];
+    document.getElementById('cc4n').textContent=playerNames[3];
+  }
+
+  drawIntroStars();
+  setTimeout(drawIntroCity,100);
+
+  const cards=['cc1','cc2','cc3','cc4'];
+  const bar=document.getElementById('intro-progress');
+  let elapsed=0; const total=9000;
+  cards.forEach((id,i)=>setTimeout(()=>document.getElementById(id).classList.add('visible'),500+i*1600));
+  const iv=setInterval(()=>{
+    elapsed+=80;bar.style.width=Math.min(100,(elapsed/total)*100)+'%';
+    if(elapsed>=total){
+      clearInterval(iv);
+      const introEl=document.getElementById('intro');
+      introEl.style.transition='opacity 0.8s';introEl.style.opacity='0';
+      setTimeout(()=>{introEl.style.display='none';document.getElementById('name-input-screen').style.display='flex';},800);
+    }
+  },80);
+
+  // Skip on tap
+  document.getElementById('intro').addEventListener('click',()=>{
+    clearInterval(iv);
+    const introEl=document.getElementById('intro');
+    introEl.style.transition='opacity 0.5s';introEl.style.opacity='0';
+    setTimeout(()=>{introEl.style.display='none';document.getElementById('name-input-screen').style.display='flex';},500);
+  });
+}
+
+runIntro();
+</script>
+</body>
+</html>
